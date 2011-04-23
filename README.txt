@@ -1,6 +1,6 @@
-json-liner is parses JSON input and generates grep friendly output. Each output
+json-liner parses JSON input and generates grep friendly output. Each output
 line corresponds to a JSON leaf node. json-liner is inspired by jsonpipe
-(https://github.com/dvxhouse/jsonpipe). 
+(https://github.com/dvxhouse/jsonpipe).
 
 Examples:
 $ echo 123 | json-liner
@@ -19,7 +19,7 @@ $ echo '{"a":{"b":1,"c":2},"d":["x",1]}' | json-liner
 /%d/@1	1
 
 The default path delimiter, column delimiter, array prefix and object prefix
-can be changed (even to empty).
+can be changed (even to empty). Charactor escaping is same as in JSON.
 
 The differences between json-liner and jsonpipe are:
 1. json-liner is a standalone program written in C, while jsonpipe is in python.
