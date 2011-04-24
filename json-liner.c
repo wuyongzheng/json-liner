@@ -205,7 +205,7 @@ static void help (void)
 
 int main (int argc, char *argv[])
 {
-	int opt;
+	int opt, retval;
 	const char *infile = NULL, *outfile = NULL;
 
 	while ((opt = getopt(argc, argv, "i:o:p:c:a:b:h")) != -1) {
@@ -237,5 +237,12 @@ int main (int argc, char *argv[])
 		return 1;
 	}
 
-	return process();
+	retval = process();
+
+	if (infile)
+		fclose(input);
+	if (outfile)
+		fclose(output);
+
+	return retval;
 }
