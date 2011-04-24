@@ -4,7 +4,8 @@
 #include <unistd.h>
 #include <assert.h>
 
-#define BUFFERSIZE (64*1024)
+#define TOKENSIZE 8192
+#define PATHSIZE 65536
 
 static char *path_del = "/";
 static char *column_del = "\t";
@@ -24,7 +25,7 @@ static inline int getc_err (void)
 
 static const char *get_token (void)
 {
-	static char buffer[BUFFERSIZE];
+	static char buffer[TOKENSIZE];
 	int c;
 
 	do {
@@ -59,7 +60,7 @@ static const char *get_token (void)
 					buffer[i ++] = getc_err();
 				}
 			}
-			if (i >= BUFFERSIZE - 6) {
+			if (i >= TOKENSIZE - 6) {
 				fprintf(stderr, "lexer: string too long\n");
 				exit(1);
 			}
@@ -76,7 +77,7 @@ static const char *get_token (void)
 				assert(c == ungetc(c, input));
 				break;
 			}
-			if (i >= BUFFERSIZE - 2) {
+			if (i >= TOKENSIZE - 2) {
 				fprintf(stderr, "lexer: number too long\n");
 				exit(1);
 			}
@@ -94,7 +95,7 @@ static const char *get_token (void)
 				assert(c == ungetc(c, input));
 				break;
 			}
-			if (i >= BUFFERSIZE - 2) {
+			if (i >= TOKENSIZE - 2) {
 				fprintf(stderr, "lexer: constant too long\n");
 				exit(1);
 			}
@@ -146,6 +147,8 @@ static int process_node (char *prefix, int length, int size)
 				return 1;
 			}
 			new_length = length + snprintf(prefix + length, size - length - 1, "%s%s%s", path_del, object_prefix, token);
+			if (new_length >= size - 2)
+				return 1;
 			if ((token = get_token()) == NULL) {
 				fprintf(stderr, "unexpected EOF in object. expect ':'\n");
 				return 1;
@@ -179,11 +182,11 @@ static int process_node (char *prefix, int length, int size)
 static int process (void)
 {
 	int retval;
-	char prefix[BUFFERSIZE];
+	char prefix[PATHSIZE];
 	const char *token;
 
 	prefix[0] = '\0';
-	retval = process_node(prefix, 0, BUFFERSIZE);
+	retval = process_node(prefix, 0, PATHSIZE);
 	if (retval)
 		return retval;
 
