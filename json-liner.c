@@ -21,7 +21,7 @@ static const char *mystrndup (const char *str, int len)
 	return buffer;
 }
 
-static const char *next_token (void)
+static const char *get_token (void)
 {
 	static char buffer[BUFFERSIZE];
 	static int buffer_head = 0, buffer_tail = 0, eof = 0;
@@ -103,13 +103,71 @@ static const char *next_token (void)
 	return retval;
 }
 
-static int process (void)
+static int process_node (char *prefix, int length, int size)
 {
-	const char *token;
-	while ((token = next_token()) != NULL) {
-		printf("token: \"%s\"\n", token);
+	const char *token = get_token();
+	int retval;
+
+	if (token == NULL) {
+		fprintf(stderr, "unexpected EOF\n");
+		return 1;
 	}
-	return 0;
+
+	if (token[0] == '[') {
+		int i;
+		for (i = 0; ; i++) {
+			int new_length = length + snprintf(prefix + length, size - length - 1, "%s%s%d", path_del, array_prefix, i);
+			if (new_length >= size - 2)
+				return 1;
+			if ((retval = process_node(prefix, new_length, size)))
+				return retval;
+			if ((token = get_token()) == NULL) {
+				fprintf(stderr, "unexpected EOF in array. expect ','\n");
+				return 1;
+			}
+			if (strcmp(token, "]") == 0)
+				return 0;
+			if (strcmp(token, ",") != 0) {
+				fprintf(stderr, "unexpected token %s in array\n", token);
+				return 1;
+			}
+		}
+	} else if (token[0] == '{') {
+		while (1) {
+			int new_length;
+			if ((token = get_token()) == NULL) {
+				fprintf(stderr, "unexpected EOF at object name\n");
+				return 1;
+			}
+			new_length = length + snprintf(prefix + length, size - length - 1, "%s%s%s", path_del, object_prefix, token);
+			if ((token = get_token()) == NULL) {
+				fprintf(stderr, "unexpected EOF in object. expect ':'\n");
+				return 1;
+			}
+			if (strcmp(token, ":") != 0) {
+				fprintf(stderr, "expected ':' but got '%s'\n", token);
+				return 1;
+			}
+			if ((retval = process_node(prefix, new_length, size)))
+				return retval;
+			if ((token = get_token()) == NULL) {
+				fprintf(stderr, "unexpected EOF in object. expect ','\n");
+				return 1;
+			}
+			if (strcmp(token, "}") == 0)
+				return 0;
+			if (strcmp(token, ",") != 0) {
+				fprintf(stderr, "unexpected token %s in object\n", token);
+				return 1;
+			}
+		}
+	} else {
+		if (length == 0)
+			fprintf(output, "%s%s%s\n", path_del, column_del, token);
+		else
+			fprintf(output, "%s%s%s\n", prefix, column_del, token);
+		return 0;
+	}
 }
 
 static void help (void)
@@ -119,8 +177,10 @@ static void help (void)
 
 int main (int argc, char *argv[])
 {
-	int opt;
+	int opt, retval;
 	const char *infile = NULL, *outfile = NULL;
+	char prefix[BUFFERSIZE];
+	const char *token;
 
 	while ((opt = getopt(argc, argv, "i:o:p:c:a:b:h")) != -1) {
 		switch (opt) {
@@ -151,5 +211,15 @@ int main (int argc, char *argv[])
 		return 1;
 	}
 
-	return process();
+	prefix[0] = '\0';
+	retval = process_node(prefix, 0, BUFFERSIZE);
+	if (retval)
+		return retval;
+
+	if ((token = get_token()) != NULL) {
+		fprintf(stderr, "redundant input %s ...\n", token);
+		return 1;
+	}
+
+	return 0;
 }
