@@ -176,6 +176,25 @@ static int process_node (char *prefix, int length, int size)
 	}
 }
 
+static int process (void)
+{
+	int retval;
+	char prefix[BUFFERSIZE];
+	const char *token;
+
+	prefix[0] = '\0';
+	retval = process_node(prefix, 0, BUFFERSIZE);
+	if (retval)
+		return retval;
+
+	if ((token = get_token()) != NULL) {
+		fprintf(stderr, "redundant input %s ...\n", token);
+		return 1;
+	}
+
+	return 0;
+}
+
 static void help (void)
 {
 	printf("help\n");
@@ -183,10 +202,8 @@ static void help (void)
 
 int main (int argc, char *argv[])
 {
-	int opt, retval;
+	int opt;
 	const char *infile = NULL, *outfile = NULL;
-	char prefix[BUFFERSIZE];
-	const char *token;
 
 	while ((opt = getopt(argc, argv, "i:o:p:c:a:b:h")) != -1) {
 		switch (opt) {
@@ -217,15 +234,5 @@ int main (int argc, char *argv[])
 		return 1;
 	}
 
-	prefix[0] = '\0';
-	retval = process_node(prefix, 0, BUFFERSIZE);
-	if (retval)
-		return retval;
-
-	if ((token = get_token()) != NULL) {
-		fprintf(stderr, "redundant input %s ...\n", token);
-		return 1;
-	}
-
-	return 0;
+	return process();
 }
