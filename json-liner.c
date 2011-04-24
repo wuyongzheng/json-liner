@@ -12,95 +12,101 @@ static char *array_prefix = "@";
 static char *object_prefix = "%";
 static FILE *input, *output;
 
-static const char *mystrndup (const char *str, int len)
+static inline int getc_err (void)
 {
-	static char buffer[BUFFERSIZE];
-	int lenx = len < BUFFERSIZE - 1 ? len : BUFFERSIZE - 1;
-	memcpy(buffer, str, lenx);
-	buffer[lenx] = '\0';
-	return buffer;
+	int c = getc(input);
+	if (c == EOF) {
+		fprintf(stderr, "lexer: unexpected EOF\n");
+		exit(1);
+	}
+	return c;
 }
 
 static const char *get_token (void)
 {
 	static char buffer[BUFFERSIZE];
-	static int buffer_head = 0, buffer_tail = 0, eof = 0;
-	const char *retval;
+	int c;
 
-	if (buffer_tail - buffer_head < BUFFERSIZE / 2 && eof == 0) {
-		if (buffer_head != 0) {
-			memmove(buffer, buffer + buffer_head, buffer_tail - buffer_head);
-			buffer_tail -= buffer_head;
-			buffer_head = 0;
-		}
-		do {
-			int length = fread(buffer + buffer_tail, 1, BUFFERSIZE - buffer_tail, input);
-			if (length == 0)
-				eof = 1;
-			else
-				buffer_tail += length;
-		} while (eof == 0 && buffer_tail < BUFFERSIZE);
+	do {
+		c = getc(input);
+		if (c == EOF)
+			return NULL;
+	} while (c == ' ' || c == '\t' || c == '\r' || c == '\n');
+
+	switch(c) {
+		case '[': return "[";
+		case ']': return "]";
+		case '{': return "{";
+		case '}': return "}";
+		case ':': return ":";
+		case ',': return ",";
 	}
 
-	while (buffer_head < buffer_tail && 
-			(buffer[buffer_head] == ' ' ||
-			 buffer[buffer_head] == '\t' ||
- 			 buffer[buffer_head] == '\r' ||
- 			 buffer[buffer_head] == '\n'))
-		buffer_head ++;
-
-	if (buffer_head >= buffer_tail)
-		return NULL;
-
-	switch(buffer[buffer_head]) {
-		case '[': buffer_head ++; return "[";
-		case ']': buffer_head ++; return "]";
-		case '{': buffer_head ++; return "{";
-		case '}': buffer_head ++; return "}";
-		case ':': buffer_head ++; return ":";
-		case ',': buffer_head ++; return ",";
-	}
-
-	if (buffer[buffer_head] == '"') {
-		int ptr;
-		for (ptr = buffer_head + 1; ptr < buffer_tail && buffer[ptr] != '"'; ptr ++) {
-			if (buffer[ptr] == '\\')
-				ptr ++;
+	if (c == '"') {
+		int i = 0;
+		while (1) {
+			c = getc_err();
+			if (c == '"')
+				break;
+			buffer[i ++] = c;
+			if (c == '\\') {
+				c = getc_err();
+				buffer[i ++] = c;
+				if (c == 'u') {
+					buffer[i ++] = getc_err();
+					buffer[i ++] = getc_err();
+					buffer[i ++] = getc_err();
+					buffer[i ++] = getc_err();
+				}
+			}
+			if (i >= BUFFERSIZE - 6) {
+				fprintf(stderr, "lexer: string too long\n");
+				exit(1);
+			}
 		}
-		if (ptr >= buffer_tail) {
-			fprintf(stderr, "unfinished string\n");
-			exit(1);
+		buffer[i] = '\0';
+	} else if (c == '-' || c == '+' || (c >= '0' && c <= '9')) {
+		int i = 0;
+		buffer[i ++] = c;
+		while (1) {
+			c = getc(input);
+			if (c == EOF)
+				break;
+			if ((c < '0' || c > '9') && c != '.' && c != 'e' && c != 'E') {
+				assert(c == ungetc(c, input));
+				break;
+			}
+			if (i >= BUFFERSIZE - 2) {
+				fprintf(stderr, "lexer: number too long\n");
+				exit(1);
+			}
+			buffer[i ++] = c;
 		}
-		retval = mystrndup(buffer + buffer_head + 1, ptr - buffer_head - 1);
-		buffer_head = ptr + 1;
-	} else if (buffer[buffer_head] == '-' || buffer[buffer_head] == '+' ||
-			(buffer[buffer_head] >= '0' && buffer[buffer_head] <= '9')) {
-		int ptr;
-		for (ptr = buffer_head + 1; ptr < buffer_tail &&
-				((buffer[ptr] >= '0' && buffer[ptr] <= '9') ||
-				 buffer[ptr] == '.' ||
-				 buffer[ptr] == 'e' ||
-				 buffer[ptr] == 'E'); ptr ++)
-			;
-		retval = mystrndup(buffer + buffer_head, ptr - buffer_head);
-		buffer_head = ptr;
-	} else if ((buffer[buffer_head] >= 'a' && buffer[buffer_head] <= 'z') ||
-			(buffer[buffer_head] >= 'A' && buffer[buffer_head] <= 'Z') ||
-			buffer[buffer_head] == '_') {
-		int ptr;
-		for (ptr = buffer_head + 1; ptr < buffer_tail &&
-				((buffer[ptr] >= 'a' && buffer[ptr] <= 'z') ||
-				 (buffer[ptr] >= 'A' && buffer[ptr] <= 'Z') ||
-				 buffer[ptr] == '_'); ptr ++)
-			;
-		retval = mystrndup(buffer + buffer_head, ptr - buffer_head);
-		buffer_head = ptr;
+		buffer[i] = '\0';
+	} else if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_') {
+		int i = 0;
+		buffer[i ++] = c;
+		while (1) {
+			c = getc(input);
+			if (c == EOF)
+				break;
+			if ((c < 'a' || c > 'z') && (c < 'A' || c > 'Z') && c != '_') {
+				assert(c == ungetc(c, input));
+				break;
+			}
+			if (i >= BUFFERSIZE - 2) {
+				fprintf(stderr, "lexer: constant too long\n");
+				exit(1);
+			}
+			buffer[i ++] = c;
+		}
+		buffer[i] = '\0';
 	} else {
-		fprintf(stderr, "unexpected character %c\n", buffer[buffer_head]);
+		fprintf(stderr, "lexer: unexpected character %c\n", c);
 		exit(1);
 	}
 
-	return retval;
+	return buffer;
 }
 
 static int process_node (char *prefix, int length, int size)
