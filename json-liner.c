@@ -11,6 +11,7 @@ static char *path_del = "/";
 static char *column_del = "\t";
 static char *array_prefix = "@";
 static char *object_prefix = "%";
+static int array_base = 0;
 static FILE *input, *output;
 
 static inline int getc_err (void)
@@ -122,7 +123,7 @@ static int process_node (char *prefix, int length, int size)
 
 	if (token[0] == '[') {
 		int i;
-		for (i = 0; ; i++) {
+		for (i = array_base; ; i++) {
 			int new_length = length + snprintf(prefix + length, size - length - 1, "%s%s%d", path_del, array_prefix, i);
 			if (new_length >= size - 2)
 				return 1;
@@ -208,7 +209,7 @@ int main (int argc, char *argv[])
 	int opt, retval;
 	const char *infile = NULL, *outfile = NULL;
 
-	while ((opt = getopt(argc, argv, "i:o:p:c:a:b:h")) != -1) {
+	while ((opt = getopt(argc, argv, "i:o:p:c:a:b:0:h")) != -1) {
 		switch (opt) {
 			case 'i': infile = optarg; break;
 			case 'o': outfile = optarg; break;
@@ -216,6 +217,7 @@ int main (int argc, char *argv[])
 			case 'c': column_del = optarg; break;
 			case 'a': array_prefix = optarg; break;
 			case 'b': object_prefix = optarg; break;
+			case '0': array_base = atoi(optarg) ; break;
 			case 'h': help(); return 0;
 			default: fprintf(stderr, "Unknown option. check %s -h.\n", argv[0]); return 1;
 		}
