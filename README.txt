@@ -23,6 +23,6 @@ can be changed (even to empty). Charactor escaping is same as in JSON.
 
 The differences between json-liner and jsonpipe are:
 1. json-liner is a standalone program written in C, while jsonpipe is in python.
-2. json-liner only output leaf nodes.
+2. json-liner only outputs leaf nodes.
 3. json-liner's output is not intended to reconstruct JSON.
 4. Because of on-the-fly processing, json-liner uses very little memory.

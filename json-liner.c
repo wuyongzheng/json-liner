@@ -201,7 +201,27 @@ static int process (void)
 
 static void help (void)
 {
-	printf("help\n");
+	puts("json-liner: grep friendly JSON dumper");
+	puts("Usage: json-liner [-i infile] [-o outfile] [-p pathdel] [-c columndel]");
+	puts("                  [-a arrprefix] [-b objprefix] [-0 arraybase] [-h]");
+	puts("  -i infile    : input file path. Default is stdin.");
+	puts("  -o outfile   : output file path. Default is stdout.");
+	puts("  -p pathdel   : path delimiter. Default is /.");
+	puts("  -c columndel : column delimiter. Default is TAB.");
+	puts("                 Tips: pipe to \"cut -f 2\" to extract value.");
+	puts("  -a arrprefix : array prefix. Default is @.");
+	puts("  -b objprefix : object prefix. Default is %.");
+	puts("  -0 arraybase : array base. Default is 0.");
+	puts("                 Tips: set to 1000 so that indexes are (almost) fixed size.");
+	puts("  -h           : show this help message.");
+	puts("Example:");
+	puts("  $ echo 123 | json-liner");
+	puts("  /\t123");
+	puts("  $ echo '{\"a\":{\"b\":1,\"c\":2},\"d\":[\"x\",1]}' | json-liner");
+	puts("  /%a/%b\t1");
+	puts("  /%a/%c\t2");
+	puts("  /%d/@0\tx");
+	puts("  /%d/@1\t1");
 }
 
 int main (int argc, char *argv[])
