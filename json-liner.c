@@ -13,6 +13,7 @@ static char *array_prefix = "@";
 static char *object_prefix = "%";
 static int array_base = 0;
 static FILE *input, *output;
+static const char *saved_token = NULL;
 
 static inline int getc_err (void)
 {
@@ -24,10 +25,22 @@ static inline int getc_err (void)
 	return c;
 }
 
+static void put_token (const char *token)
+{
+	assert(saved_token == NULL);
+	saved_token = token;
+}
+
 static const char *get_token (void)
 {
 	static char buffer[TOKENSIZE];
 	int c;
+
+	if (saved_token) {
+		const char *tmp = saved_token;
+		saved_token = NULL;
+		return tmp;
+	}
 
 	do {
 		c = getc(input);
@@ -123,6 +136,16 @@ static int process_node (char *prefix, int length, int size)
 
 	if (token[0] == '[') {
 		int i;
+
+		// check for empty array.
+		if ((token = get_token()) == NULL) {
+			fprintf(stderr, "unexpected EOF in array.\n");
+			return 1;
+		}
+		if (strcmp(token, "]") == 0)
+			return 0;
+		put_token(token);
+
 		for (i = array_base; ; i++) {
 			int new_length = length + snprintf(prefix + length, size - length - 1, "%s%s%d", path_del, array_prefix, i);
 			if (new_length >= size - 2)
@@ -141,6 +164,15 @@ static int process_node (char *prefix, int length, int size)
 			}
 		}
 	} else if (token[0] == '{') {
+		// check for empty dict.
+		if ((token = get_token()) == NULL) {
+			fprintf(stderr, "unexpected EOF in array.\n");
+			return 1;
+		}
+		if (strcmp(token, "}") == 0)
+			return 0;
+		put_token(token);
+
 		while (1) {
 			int new_length;
 			if ((token = get_token()) == NULL) {
