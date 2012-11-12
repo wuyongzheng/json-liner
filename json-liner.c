@@ -31,6 +31,7 @@ static void put_token (const char *token)
 	saved_token = token;
 }
 
+/* for string, return the string prepended with " */
 static const char *get_token (void)
 {
 	static char buffer[TOKENSIZE];
@@ -59,6 +60,7 @@ static const char *get_token (void)
 
 	if (c == '"') {
 		int i = 0;
+		buffer[i ++] = '"';
 		while (1) {
 			c = getc_err();
 			if (c == '"')
@@ -179,7 +181,7 @@ static int process_node (char *prefix, int length, int size)
 				fprintf(stderr, "unexpected EOF at object name\n");
 				return 1;
 			}
-			new_length = length + snprintf(prefix + length, size - length - 1, "%s%s%s", path_del, object_prefix, token);
+			new_length = length + snprintf(prefix + length, size - length - 1, "%s%s%s", path_del, object_prefix, token[0] == '"' ? token + 1 : token);
 			if (new_length >= size - 2)
 				return 1;
 			if ((token = get_token()) == NULL) {
@@ -205,9 +207,9 @@ static int process_node (char *prefix, int length, int size)
 		}
 	} else {
 		if (length == 0)
-			fprintf(output, "%s%s%s\n", path_del, column_del, token);
+			fprintf(output, "%s%s%s\n", path_del, column_del, token[0] == '"' ? token + 1 : token);
 		else
-			fprintf(output, "%s%s%s\n", prefix, column_del, token);
+			fprintf(output, "%s%s%s\n", prefix, column_del, token[0] == '"' ? token + 1 : token);
 		return 0;
 	}
 }
