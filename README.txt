@@ -19,7 +19,7 @@ $ echo '{"a":{"b":1,"c":2},"d":["x",1]}' | json-liner
 /%d/@1	1
 
 The default path delimiter, column delimiter, array prefix and object prefix
-can be changed (even to empty). Charactor escaping is same as in JSON.
+can be changed (even to empty). Character escaping is same as in JSON.
 
 The differences between json-liner and jsonpipe are:
 1. json-liner is a standalone program written in C with no dependencies except
